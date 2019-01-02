@@ -275,8 +275,14 @@ function buildMap(collected, hasDensity, noDensity) {
         let features = map.queryRenderedFeatures(e.point);
     
         if (features.length > 0) {
+            let amount = features[0].properties.density;
+            let msg = "";
+            if(amount === 0) {
+                amount = "Zero";
+                msg = " Try somewhere else maybe?";
+            }
             
-            document.getElementById('pd').innerHTML = '<h3><strong>ct#' + features[0].properties.name + '</strong></h3><p><strong><em>' + features[0].properties.density + '</strong> historical landmarks here!</em></p>';
+            document.getElementById('pd').innerHTML = '<h3><strong>ct#' + features[0].properties.name + '</strong></h3><p><strong><em>' + amount + '</strong> historical landmarks here!'+msg+'</em></p>';
         } else {
             document.getElementById('pd').innerHTML = '<p>Hover over a census tract!</p>';
         }
