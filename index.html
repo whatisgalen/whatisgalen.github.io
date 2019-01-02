@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
     <link href="https://api.mapbox.com/mapbox-gl-js/v0.52.0/mapbox-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/v0.52.0/mapbox-gl.js"></script>
     <!-- <script src="https://api.mapbox.com/mapbox.js/plugins/turf/v3.0.11/turf.min.js"></script> -->
     <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
@@ -14,6 +16,8 @@
 </head>
 <body>
     <div id='map'></div>
+    <div class='map-overlay' id='features'><h2>Historical Landmark density</h2><div id='pd'><p>Hover over a census tract!</p></div></div>
+    <div class='map-overlay' id='legend'></div>
     <script src="main.js"></script>
 </body>
 </html>
