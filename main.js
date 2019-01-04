@@ -12,8 +12,6 @@ async function main() {
     
     const polyData = await fetchData("census_tracts.json");
     let pointData = await fetchData("historic_markers.json");
-    // let neighborhoodPolyData = await fetchData("la-county-neighborhoods-v1.geojson");
-    // let pointsNamed = await fetchData("historic_places1.json");
     let pointsNamed = await fetchData("HistoricPlacesLA_1.json");
 
     for(let i = 0; i < pointData.features.length; i++) { 
@@ -21,23 +19,20 @@ async function main() {
             "id": pointData.features[i].id
         }; 
     }
-    console.log(pointData.features.length);
+    // console.log(pointData.features.length);
 
-    //experimental
     for(let i = 0; i < polyData.features.length;i++) {
         polyData.features[i]["id"] = polyData.features[i].properties.name;
     }
 
-    let collected, hasDensity, noDensity, censusTractsLayers;
+    let collected, hasDensity, noDensity;
     try {
         collected = turf.collect(polyData, pointData, "id", "marker_ids"); //create/populate prop in each poly called marker_ids
-        // console.log("pointsNamed:");
-        // console.log(pointsNamed);
+        //re-insert coordinates as an array, not geom.properties
         for(let i = 0; i < pointsNamed.features.length; i++) {
             let co1 = pointsNamed.features[i].geometry.coordinates[0][0];
             let co2 = pointsNamed.features[i].geometry.coordinates[0][1];
             pointsNamed.features[i].geometry.coordinates = [co1, co2];
-            // pointsNamed.features[i].geometry.coordinates.pop();
             pointsNamed.features[i].geometry.type = "Point";
         }
         console.log("pointsNamed:");
@@ -58,10 +53,6 @@ async function main() {
                 hasDensity.features.push(collected.features[i]);
             }
         }
-        
-        // console.log("this is collected:");
-        console.log(collected);
-   
         buildMap(collected, hasDensity, noDensity);
     } catch(e) {
         console.log(e);
@@ -78,87 +69,7 @@ async function fetchData(url) {
     return (data);
 }
 
-function buildLayers(collected) {
-    // var t0 = performance.now();
-    let censusTractsLayers = [];
-
-        censusTractsLayers.push(
-            {
-                id: "tracts-outline",
-                type: "line",
-                source: {
-                    type: 'geojson',
-                    data: collected
-                },
-                paint: {
-                    "line-color": ["case", ["boolean", ["feature-state", "hover"], !1], "#383838", "rgb(193, 193, 193)"],
-                    "line-width": ["case", ["boolean", ["feature-state", "hover"], !1], 3, 1]
-                }
-            },
-            {
-                id: ('tractPoly1'),
-                type: 'fill-extrusion',
-                source: {
-                    type: 'geojson',
-                    data: collected
-                },
-                paint: 
-                {
-                    'fill-extrusion-color': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'density'],
-                        1, '#00ffff',
-                        50, '#0feffe',
-                        100, '#1edffd',
-                        150, '#2dcffc',
-                        200, '#3cbffb',
-                        250, '#4baffa',
-                        300, '#5a9ff9',
-                        350, '#698ff8',
-                        400, '#787ff7',
-                        450, '#876ff6',
-                        500, '#965ff5',
-                        550, '#a54ff4',
-                        600, '#b43ff3',
-                        650, '#c32ff2',
-                        700, '#d21ff1',
-                        750, '#e10ff0'
-
-
-                        // 0, '#f5f5f5',
-                        // 50, '#d1ffff',
-                        // 100, '#a1ffff',
-                        // 150, '#71ffff',
-                        // 200, '#41ffff',
-                        // 250, '#11ffff',
-                        // 300, '#00efff',
-                        // 350, '#00d6ff',
-                        // 400, '#00bdff',
-                        // 450, '#00a4ff',
-                        // 500, '#0073ef',
-                        // 550, '#005cbf',
-                        // 600, '#00458f',
-                        // 650, '#002e5f',
-                        // 700, '#00172f'
-                    ],
-                    'fill-extrusion-opacity': 0.6,
-                    'fill-extrusion-height': [
-                        "+", ["*", ["get", "density"], 15], ["case", ["boolean", ["feature-state", "hover"], !1], 1e3, 0]
-                    ],
-                    "fill-extrusion-base": ["case", ["boolean", ["feature-state", "hover"], !1], 1e3, 0],
-        
-                     
-                }
-            }
-        )
-    // var t1 = performance.now();
-    // console.log("BuildLayers="+((t1-t0)/1000)); 
-    return censusTractsLayers;
-}
-
 function buildMap(collected, hasDensity, noDensity) {
-    // var t0 = performance.now();
     let hoveredStateId = null;
     map.on('load', ()=> {
 
@@ -199,7 +110,7 @@ function buildMap(collected, hasDensity, noDensity) {
           }
 
 
-        //add source(s)
+        //add sources
         map.addSource('collected-tracts', {
             type: 'geojson',
             data: collected
@@ -257,96 +168,78 @@ function buildMap(collected, hasDensity, noDensity) {
                         [750, '#e10ff0']]
                     },
                     "fill-extrusion-opacity": 0.55
-                      
                 }
             });
-            map.addLayer(
-                {
-                    id: "tracts-non-extruded",
-                    type: 'fill-extrusion',
-                    source: 'flat-tracts',
-                    paint: 
+        map.addLayer(
+            {
+                id: "tracts-non-extruded",
+                type: 'fill-extrusion',
+                source: 'flat-tracts',
+                paint: 
                     {
                         "fill-extrusion-height": 0,
                         "fill-extrusion-base": 0,
-                        // "fill-extrusion-color": {},
-                        "fill-extrusion-opacity": 0
-                          
+                        "fill-extrusion-opacity": 0  
                     }
-                });
+            });
     
-    map.on("mousemove", "tracts-extruded", (e)=> {
-        
-        if(e.features.length > 0) {
-            if(hoveredStateId) { 
-                map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, { hover: false});
+            //show outline/hover for positive density tracts
+        map.on("mousemove", "tracts-extruded", (e)=> {
+            if(e.features.length > 0) {
+                if(hoveredStateId) { 
+                    map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, { hover: false});
+                    map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: false});
+                }
+                hoveredStateId = e.features[0].id;
+                map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: true});
+                map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: true});
+            }
+        });
+        //show outline/hover for zero-density tracts
+        map.on("mousemove", "tracts-non-extruded", (e)=> {
+            if(e.features.length > 0) {
+                if(hoveredStateId) { 
+                    map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: false});
+                    map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, { hover: false});
+                }
+                hoveredStateId = e.features[0].id;
+                map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: true});
+            }
+        });
+
+        map.on("mouseleave", "tracts-extruded", ()=> {
+            if(hoveredStateId) {
+                map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: false});
                 map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: false});
             }
-            hoveredStateId = e.features[0].id;
-            map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: true});
-            map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: true});
-            // console.log(e.features[0].id);
-        }
-        
-    });
-    map.on("mousemove", "tracts-non-extruded", (e)=> {
-        
-        if(e.features.length > 0) {
-            if(hoveredStateId) { 
+            hoveredStateId = null;
+        });
+
+        map.on("mouseleave", "tracts-non-extruded", ()=> {
+            if(hoveredStateId) {
                 map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: false});
-                map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, { hover: false});
+                map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: false});
             }
-            hoveredStateId = e.features[0].id;
-            map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: true});
-            // console.log(e.features[0].id);
+            hoveredStateId = null;
+        });
+
+        map.on('mousemove', (e)=> {
+            let features = map.queryRenderedFeatures(e.point);
         
-        }
-    });
-
-    map.on("mouseleave", "tracts-extruded", ()=> {
-        if(hoveredStateId) {
-            map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: false});
-            map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: false});
-        }
-        hoveredStateId = null;
-    });
-
-    map.on("mouseleave", "tracts-non-extruded", ()=> {
-        if(hoveredStateId) {
-            map.setFeatureState({source: 'dense-tracts', id: hoveredStateId}, {hover: false});
-            map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: false});
-        }
-        hoveredStateId = null;
-    });
-
-    map.on('mousemove', (e)=> {
-        let features = map.queryRenderedFeatures(e.point);
-    
-        if (features.length > 0) {
-            let amount = features[0].properties.density;
-            let msg = "";
-            // let landmarks = JSON.parse(features[0].properties.landmarks);
-            // console.log(landmarks);
-            // let landmark = ("Local Landmark: "+ landmarks[Math.floor(Math.random()*landmarks.length)]);
-            // let landmark = ("Local Landmark: "+ landmarks[0]);
-            if(amount === 0) {
-                amount = "Zero";
-                msg = " Try somewhere else maybe?";
+            if (features.length > 0) {
+                let amount = features[0].properties.density;
+                let msg = "";
+                if(amount === 0) {
+                    amount = "Zero";
+                    msg = " Try somewhere else maybe?";
+                }
+                
+                document.getElementById('pd').innerHTML = '<h3><strong>ct#' + features[0].properties.name + '</strong></h3><p><strong><em>' + amount + '</strong> historical landmark(s) here!'+msg+'</em></p>';
+            } else {
+                document.getElementById('pd').innerHTML = '<p>Hover over a census tract!</p>';
             }
-            // if(landmarks.length < 1) landmark = "";
-            document.getElementById('pd').innerHTML = '<h3><strong>ct#' + features[0].properties.name + '</strong></h3><p><strong><em>' + amount + '</strong> historical landmark(s) here!</em></p><p>';
-        } else {
-            document.getElementById('pd').innerHTML = '<p>Hover over a census tract!</p>';
-        }
-        map.getCanvas().style.cursor = features.length ? 'pointer' : ''; 
-    });
-
-    // map.on("mouseleave", "tracts-outline", ()=> {
-    //     if(hoveredStateId) {
-    //         map.setFeatureState({source: 'collected-tracts', id: hoveredStateId}, {hover: false});
-    //     }
-    //     hoveredStateId = null;
-    // });
+            map.getCanvas().style.cursor = features.length ? 'pointer' : ''; 
+        });
 
         map.on('click', function(e) {          
             let features = map.queryRenderedFeatures(e.point);
@@ -358,7 +251,6 @@ function buildMap(collected, hasDensity, noDensity) {
                 return;
             } else if (features[0].properties.density >= 1 && lM.length < 1) {
                 html = ('<h3>No landmark names available for this subset</h3>');
-
             } else {
                 let randInt = Math.floor(Math.random()*lM.length);
                 let text = lM[randInt];
@@ -372,8 +264,6 @@ function buildMap(collected, hasDensity, noDensity) {
                 .setHTML(html)
                 .setLngLat([e.lngLat.lng, e.lngLat.lat])
                 .addTo(map);
-            
-
         });
     });
 }
