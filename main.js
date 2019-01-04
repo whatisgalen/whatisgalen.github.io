@@ -13,8 +13,8 @@ async function main() {
     const polyData = await fetchData("census_tracts.json");
     let pointData = await fetchData("historic_markers.json");
     // let neighborhoodPolyData = await fetchData("la-county-neighborhoods-v1.geojson");
-    let pointsNamed = await fetchData("historic_places1.json");
-    // let pointNamed2 = await fetchData("HistoricPlacesLA_2.geojson");
+    // let pointsNamed = await fetchData("historic_places1.json");
+    let pointsNamed = await fetchData("HistoricPlacesLA_1.json");
 
     for(let i = 0; i < pointData.features.length; i++) { 
         pointData.features[i]["properties"] = { //add a prop called "properties" to each feature
@@ -42,7 +42,8 @@ async function main() {
         }
         console.log("pointsNamed:");
         console.log(pointsNamed);
-        collected = turf.collect(collected, pointsNamed, "Name", "landmarks");
+        collected = turf.collect(collected, pointsNamed, "Name", "landmarkNames");
+        collected = turf.collect(collected, pointsNamed, "arches_id", "landmark_ids");
         console.log(collected);
         for(let i = 0; i < collected.features.length; i++) {
             collected.features[i].properties["density"] = collected.features[i].properties.marker_ids.length;
@@ -273,12 +274,6 @@ function buildMap(collected, hasDensity, noDensity) {
                           
                     }
                 });
-    // });
-    // var t1 = performance.now();
-    // console.log("BuildMap="+((t1-t0)/1000));
-
-    //let popup = new mapboxgl.Popup();
-
     
     map.on("mousemove", "tracts-extruded", (e)=> {
         
@@ -330,16 +325,16 @@ function buildMap(collected, hasDensity, noDensity) {
         if (features.length > 0) {
             let amount = features[0].properties.density;
             let msg = "";
-            let landmarks = JSON.parse(features[0].properties.landmarks);
+            // let landmarks = JSON.parse(features[0].properties.landmarks);
             // console.log(landmarks);
             // let landmark = ("Local Landmark: "+ landmarks[Math.floor(Math.random()*landmarks.length)]);
-            let landmark = ("Local Landmark: "+ landmarks[0]);
+            // let landmark = ("Local Landmark: "+ landmarks[0]);
             if(amount === 0) {
                 amount = "Zero";
                 msg = " Try somewhere else maybe?";
             }
-            if(landmarks.length < 1) landmark = "";
-            document.getElementById('pd').innerHTML = '<h3><strong>ct#' + features[0].properties.name + '</strong></h3><p><strong><em>' + amount + '</strong> historical landmark(s) here!'+msg+'</em></p><p>'+landmark+'</p>';
+            // if(landmarks.length < 1) landmark = "";
+            document.getElementById('pd').innerHTML = '<h3><strong>ct#' + features[0].properties.name + '</strong></h3><p><strong><em>' + amount + '</strong> historical landmark(s) here!</em></p><p>';
         } else {
             document.getElementById('pd').innerHTML = '<p>Hover over a census tract!</p>';
         }
@@ -353,7 +348,33 @@ function buildMap(collected, hasDensity, noDensity) {
     //     hoveredStateId = null;
     // });
 
-    // map.on('click', function(e) {});
+        map.on('click', function(e) {          
+            let features = map.queryRenderedFeatures(e.point);
+            let html = "";
+            if(!features.length) {return;}
+            let lM = JSON.parse(features[0].properties.landmarkNames);
+            let uuids = JSON.parse(features[0].properties.landmark_ids);
+            if (features[0].properties.density < 1 && lM.length < 1) {
+                return;
+            } else if (features[0].properties.density >= 1 && lM.length < 1) {
+                html = ('<h3>No landmark names available for this subset</h3>');
+
+            } else {
+                let randInt = Math.floor(Math.random()*lM.length);
+                let text = lM[randInt];
+                let uuid = uuids[randInt];
+                let link = '<a href=\"http://www.historicplacesla.org/reports/'+uuid+'\" target=\"_blank\">'+text+'</a>';
+                console.log(lM);
+                html = ('<h3>'+ link+' is here!</h3>');
+            }
+            var popup = new mapboxgl.Popup({ offset: [0, -15] })
+                .setLngLat([e.lngLat.lng, e.lngLat.lat])
+                .setHTML(html)
+                .setLngLat([e.lngLat.lng, e.lngLat.lat])
+                .addTo(map);
+            
+
+        });
     });
 }
 
